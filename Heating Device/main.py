@@ -41,60 +41,94 @@ current_time = 0
 pdName = '4CC8-90D'
 masterPassword = 'etlmd'
 calibPassword = 'calib'
-C_ET = int(time.time())
+
 lcd.clear()
 lcd.putstr("WELCOME TO ETLMD\n LAKSHMI MEERUT")
 time.sleep(1)
 date = 0
 month = 0
-year = 0 
+year = 0
 hour = 0
-minute = 0
-pressure = 0
-
+min_timer = 0
+pressure = 0.4
+timer_flag = False
+buzzer_flag = False
+C_ET = int(time.time())
 
 def format_time(time_struct, format_str):
-        # Define mappings for format placeholders
-        placeholders = {
-            '%Y': time_struct[0],   # Year with century
-            '%y': time_struct[0] % 100,  # Year without century
-            '%m': time_struct[1],  # Month (01-12)
-            '%d': time_struct[2],  # Day of the month (01-31)
-            '%H': time_struct[3],  # Hour (00-23)
-            '%M': time_struct[4],  # Minute (00-59)
-            '%S': time_struct[5],  # Second (00-59)
-            '%a': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][time_struct[6]],  # Short day name
-            '%b': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][time_struct[1] - 1]  # Short month name
-        }
+    # Define mappings for format placeholders
+    placeholders = {
+        '%Y': time_struct[0],   # Year with century
+        '%y': time_struct[0] % 100,  # Year without century
+        '%m': time_struct[1],  # Month (01-12)
+        '%d': time_struct[2],  # Day of the month (01-31)
+        '%H': time_struct[3],  # Hour (00-23)
+        '%M': time_struct[4],  # minutes (00-59)
+        '%S': time_struct[5],  # Second (00-59)
+        # Short day name
+        '%a': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][time_struct[6]],
+        # Short month name
+        '%b': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][time_struct[1] - 1]
+    }
 
-        # Replace format placeholders with corresponding values
-        for placeholder, valuet in placeholders.items():
-            format_str = format_str.replace(placeholder, f"{valuet:02}")
+    # Replace format placeholders with corresponding values
+    for placeholder, valuet in placeholders.items():
+        format_str = format_str.replace(placeholder, f"{valuet:02}")
 
-        return format_str
+    return format_str
+
 
 def show_pressure():
-        # read PRESSURE Vals----
+    global limit, pressure
+    # read PRESSURE Vals----
 #     ads_val = ads.read(4, 0)
 #     volts = ads.raw_to_v(ads_val)
     pressure = str(pressure)
     lcd.move_to(0, 0)
-    parsedPressure = f"Pressure: 00Bar"
+    parsedPressure = f"Pressure: {pressure} Bar"
     lcd.putstr(parsedPressure)
-    pressure = int(pressure)
+    pressure = float(pressure)
 
+
+def timer_flag_run(Pin):
+    global C_ET, timer_flag, buzzer_flag, min_timer
+    C_ET = int(time.time())
+    if timer_flag == True:
+        timer_flag = False
+        min_timer = 0
+    else:
+        timer_flag = True
+    
+    if buzzer_flag == True:
+        buzzer_flag = False
+        buzzer.off()
+    #buzzer_flag = False
+   
 
 def start_timer():
-    global year, month, date, day, hour, minute, second, pressure
-    # read timer vals----
-    N_ET = int(time.time())
-    timer = N_ET - C_ET
-    t = time.localtime(timer)
-    minute = format_time(t, "%M")
-    sec = format_time(t, "%S")
-    lcd.move_to(0, 1)
-    parsedWeight = 'Time: ' + f"{minute[1]}:{sec}"
-    lcd.putstr(parsedWeight)
+    global year, month, date, day, hour, min_timer, second, pressure, limit, timer_flag, buzzer_flag
+    if min_timer < limit:
+        if timer_flag:
+            # read timer vals----
+            N_ET = int(time.time())
+            timer = N_ET - C_ET
+            t = time.localtime(timer)
+            min_timer = format_time(t, "%M")
+            sec = format_time(t, "%S")
+            lcd.move_to(0, 1)
+            lcd.putstr('Time: ' + f"{min_timer}:{sec}")
+            min_timer = int(min_timer)
+            sec = int(sec)
+        else:
+            lcd.move_to(0, 1)
+            lcd.putstr('Time: ' + f"00:00")
+    else:
+        print("Timer Over!!")
+        lcd.move_to(0, 1)
+        lcd.putstr("Timer Over!")
+        if buzzer_flag == False:
+            buzzer_flag = True
+            buzzer.on()
 
 
 def generate_file(value1):
@@ -135,7 +169,7 @@ def DataSaved(Pin):
     global val, savee, value, printLine1Counter
     # print("weight : ",val , "Value : ", savee)
     if (val > 200 and val < 2010 and savee == 0):
-        (year, month, date, day, hour, minute, second, p1) = rtc.datetime()
+        (year, month, date, day, hour, minutes, second, p1) = rtc.datetime()
         try:
             file = open("line.txt")
         except Exception as e:
@@ -165,7 +199,7 @@ def DataSaved(Pin):
         file2.close()
         value = getOnLcd(val)
         line3 = "3" + "," + str(getStrictString(str(date), 2, 1)) + "/" + str(getStrictString(str(month), 2, 1)) + "/" + str(getStrictString(str(year), 4, 1)) + "," + str(getStrictString(str(hour), 2, 1)) + ":" + str(
-            getStrictString(str(minute), 2, 1)) + "," + value + "," + str(getStrictString(str(line), 4, 0)) + "," + str(getStrictString(str(from_tp), 4, 0)) + "," + str(getStrictString(str(to_tp), 4, 0))
+            getStrictString(str(minutes), 2, 1)) + "," + value + "," + str(getStrictString(str(line), 4, 0)) + "," + str(getStrictString(str(from_tp), 4, 0)) + "," + str(getStrictString(str(to_tp), 4, 0))
         value1 = str(line3)
         print("DATA ENTERED", value1)
         try:
@@ -183,7 +217,7 @@ def DataSaved(Pin):
         savee = 1
 
 
-Button_Data.irq(trigger=Pin.IRQ_FALLING, handler=DataSaved)
+Button_Data.irq(trigger=Pin.IRQ_RISING, handler=timer_flag_run)
 
 
 def toggleMenu(Pin):
@@ -281,45 +315,60 @@ def send_SMS():
         return response
 
     message = "Hello from Raspberry Pi Pico! \nThis message is sent by the SIM8000A Module With Rasberry Pi"
-    recipient_numbers = ["+916396176135", "+919258041401", "+919711366959"]  #Add more recipients number
+    recipient_numbers = ["+916396176135", "+919258041401",
+                         "+919711366959"]  # Add more recipients number
     i = 0
     for i in recipient_numbers:
         send_command("AT")
-        send_command('AT+CMGF=1') 
+        send_command('AT+CMGF=1')
         send_command('AT+CMGS="' + i + '"')
         send_command(message + '\x1A')
         print(f"SMS Sent Succesfully to {i}")
 
-def startTracker():
-    global isTransferringFile, isShowingMenu, printLine1Counter, val, avg_tare, avg_val, savee, minutes, seconds, current_time, C_ET, N_ET
-    try:
-        file = open("reference_unit.txt")
-        reference_unit = file.read()
-        file.close()
-        file1 = open("reference_weight.txt")
-        reference_weight = file1.read()
-        file1.close()
 
-    # except:
-    except Exception as e:
-        print(e)
-        lcd.clear()
-        lcd.putstr("Contact Support")
-        # return
+def startTracker():
+    global isTransferringFile, isShowingMenu, printLine1Counter, val, avg_tare, avg_val, savee, minutes, seconds, current_time, C_ET, N_ET, limit, min_timer, timer_flag, pressure
+
+#     try:
+#         file = open("reference_unit.txt")
+#         reference_unit = file.read()
+#         file.close()
+#         file1 = open("reference_weight.txt")
+#         reference_weight = file1.read()
+#         file1.close()
+#
+#     # except:
+#     except Exception as e:
+#         print(e)
+#         lcd.clear()
+#         lcd.putstr("Contact Support")
+    # return
+    # lcd.clear()
     lcd.clear()
+    lcd.putstr("Enter the timer Limit")
+    limit = int(input("Enter the time limit:"))
     while True:
-        (year, month, date, day, hour, minute, second, p1) = rtc.datetime()
+        (year, month, date, day, hour, minutes, second, p1) = rtc.datetime()
         if (isTransferringFile == 0):
             if (isShowingMenu == 0):
                 # try:
-                val = 0
-                if (val > 2000):
-                    overload = "OVERLOAD: " + str(val) + ' Kg '
+                # val = 0
+                if (pressure < 0.2):
+                    overload = "Low Pressure: " + str(pressure) + ' Bar'
                     lcd.move_to(0, 0)
                     lcd.putstr(overload)
                     lcd.move_to(0, 1)
                     lcd.putstr(str(getStrictString(str(date), 2, 1)) + "/" + str(getStrictString(str(month), 2, 1)) + "/" + str(getStrictString(
-                        str(year), 4, 1)) + " " + str(getStrictString(str(hour), 2, 1)) + ":" + str(getStrictString(str(minute), 2, 1)))
+                        str(year), 4, 1)) + " " + str(getStrictString(str(hour), 2, 1)) + ":" + str(getStrictString(str(minutes), 2, 1)))
+                    buzzer.on()
+
+                elif (pressure > 0.5):
+                    overload = "High Pressure: " + str(pressure) + ' Bar'
+                    lcd.move_to(0, 0)
+                    lcd.putstr(overload)
+                    lcd.move_to(0, 1)
+                    lcd.putstr(str(getStrictString(str(date), 2, 1)) + "/" + str(getStrictString(str(month), 2, 1)) + "/" + str(getStrictString(
+                        str(year), 4, 1)) + " " + str(getStrictString(str(hour), 2, 1)) + ":" + str(getStrictString(str(minutes), 2, 1)))
                     buzzer.on()
 
                 elif (printLine1Counter >= 0 and printLine1Counter < 200):
@@ -331,13 +380,14 @@ def startTracker():
                     lcd.putstr(ToPrint)
                     lcd.move_to(0, 1)
                     lcd.putstr(str(getStrictString(str(date), 2, 1)) + "/" + str(getStrictString(str(month), 2, 1)) + "/" + str(getStrictString(
-                        str(year), 4, 1)) + " " + str(getStrictString(str(hour), 2, 1)) + ":" + str(getStrictString(str(minute), 2, 1)))
+                        str(year), 4, 1)) + " " + str(getStrictString(str(hour), 2, 1)) + ":" + str(getStrictString(str(minutes), 2, 1)))
 
                 else:
                     savee = 0
-                    buzzer.off()
+                    #buzzer.off()
+                    show_pressure()
                     start_timer()
-                    
+
                 # except (KeyboardInterrupt, SystemExit):
                 # except Exception as e:
                 #     print("ERROR----->", e)
@@ -351,15 +401,16 @@ def startTracker():
                 lcd.putstr('SET DATE & TIME:')
                 lcd.move_to(0, 1)
                 currentTime = (str(getStrictString(str(date), 2, 1)) + "/" + str(getStrictString(str(month), 2, 1)) + "/" + str(
-                    getStrictString(str(year), 4, 1)) + " " + str(getStrictString(str(hour), 2, 1)) + ":" + str(getStrictString(str(minute), 2, 1)))
+                    getStrictString(str(year), 4, 1)) + " " + str(getStrictString(str(hour), 2, 1)) + ":" + str(getStrictString(str(minutes), 2, 1)))
                 lcd.putstr(currentTime)
                 editCurrentTime = currentTime
                 while 1:
-                    key = ser.read(1)
+                    # key = ser.read(1)
+                    key = int(input())
                     if key == None:
                         pass
                     else:
-                        key = key.decode('utf-8')
+                        # key = key.decode('utf-8')
                         print(key)
                     char = ''
                     try:
@@ -412,9 +463,9 @@ def startTracker():
                                 month = int(dateArr[1])
                                 year = int(dateArr[2])
                                 hour = int(timeArr[0])
-                                minute = int(timeArr[1])
+                                minutes = int(timeArr[1])
                                 now = (year, month, date, 1,
-                                       hour, minute, 0, 0)
+                                       hour, minutes, 0, 0)
                                 rtc.datetime(now)
                                 print('success yayyy railway')
                             except Exception as e:
@@ -437,7 +488,8 @@ def startTracker():
                 lcd.putstr(railway)
                 editRailway = railway
                 while 1:
-                    key = ser.read(1)
+                    # key = ser.read(1)
+                    key = input()
                     if key == None:
                         pass
                     else:
@@ -811,7 +863,6 @@ def startTracker():
                             # from tp name unchanged, nothing to update
                             pass
                         break
-
                 # TO TP
                 lcd.clear()
                 lcd.move_to(0, 0)
@@ -917,7 +968,8 @@ def startTracker():
                             lcd.putstr("ALL DATA DELETED")
                             time.sleep(3)
                         elif (editMasterPass == calibPassword):
-                            newValues = calibrate(reference_unit, reference_weight)
+                            newValues = calibrate(
+                                reference_unit, reference_weight)
                             reference_unit = newValues[0]
                             reference_weight = newValues[1]
                             # print("nothing")
@@ -975,3 +1027,4 @@ def getserial():
 
 getserial()
 startTracker()
+
