@@ -98,12 +98,12 @@ def timer_flag_run(Pin):
         min_timer = 0
     else:
         timer_flag = True
-    
+
     if buzzer_flag == True:
         buzzer_flag = False
         buzzer.off()
-    #buzzer_flag = False
-   
+    # buzzer_flag = False
+
 
 def start_timer():
     global year, month, date, day, hour, min_timer, second, pressure, limit, timer_flag, buzzer_flag
@@ -308,23 +308,48 @@ def buttons():
 
 
 def send_SMS():
+    global pessure, limit
+
+    with open("railway.txt") as railway_data:
+        railway_data = railway_data.read()
+    print(railway_data)
+    with open("division.txt") as division_data:
+        division_data = division_data.read()
+    print(division_data)
+    with open("from_tp.txt") as from_tp_data:
+        from_tp_data = from_tp_data.read()
+    print(from_tp_data)
+    with open("to_tp.txt") as to_tp_data:
+        to_tp_data = to_tp_data.read()
+    print(to_tp_data)
+    with open("km_post.txt") as km_post_data:
+        km_post_data = km_post_data.read()
+    print(km_post_data)
+    with open("line.txt") as line_data:
+        line_data = line_data.read()
+    print(line_data)
+    with open("Firm_Details.txt") as Firm_Details_data:
+        Firm_Details_data = Firm_Details_data.read()
+    print(Firm_Details_data)
+    with open("Welder_Details.txt") as Welder_Details_data:
+        Welder_Details_data = Welder_Details_data.read()
+    print(Welder_Details_data)
+
     def send_command(cmd):
         sim.write(cmd.encode() + b'\r\n')
         time.sleep(0.1)
         response = sim.read()  # Read up to 64 bytes of response
         return response
 
-    message = "Hello from Raspberry Pi Pico! \nThis message is sent by the SIM8000A Module With Rasberry Pi"
-    recipient_numbers = ["+916396176135", "+919258041401",
-                         "+919711366959"]  # Add more recipients number
-    i = 0
+    message = f"Railway: {railway_data}\nDivision: {division_data}\nFrom tp: {from_tp_data}\nTo tp: {to_tp_data}\nKilometer Post: {km_post_data}\nLine: {line_data}\nPressure: 00 Bar\nFirm Detail: {Firm_Details_data}\nWelder Details: {Welder_Details_data}\nTime: xxxx"
+    recipient_numbers = ["+919193257838", "+916396176135", "+919711366959"]  # Add more recipients number
+    send_command("AT")
+    send_command('AT+CMGF=1')
     for i in recipient_numbers:
-        send_command("AT")
-        send_command('AT+CMGF=1')
-        send_command('AT+CMGS="' + i + '"')
+        
+        send_command('AT+CMGS="{}"'.format(i))
         send_command(message + '\x1A')
         print(f"SMS Sent Succesfully to {i}")
-
 
 def startTracker():
     global isTransferringFile, isShowingMenu, printLine1Counter, val, avg_tare, avg_val, savee, minutes, seconds, current_time, C_ET, N_ET, limit, min_timer, timer_flag, pressure
@@ -384,7 +409,7 @@ def startTracker():
 
                 else:
                     savee = 0
-                    #buzzer.off()
+                    # buzzer.off()
                     show_pressure()
                     start_timer()
 
@@ -1027,4 +1052,3 @@ def getserial():
 
 getserial()
 startTracker()
-
